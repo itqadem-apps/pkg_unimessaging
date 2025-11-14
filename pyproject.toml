@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "unimessaging"
+version = "0.0.1"
+description = "Small starter Python package for messaging utilities."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [ { name = "Your Name" } ]
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+nats = ["nats-py>=2.6"]
+
+[project.urls]
+"Source" = "https://example.com/unimessaging"
