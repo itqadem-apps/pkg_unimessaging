@@ -4,16 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "unimessaging"
-version = "0.0.1"
+version = "0.0.2"
 description = "Small starter Python package for messaging utilities."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [ { name = "Your Name" } ]
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 dependencies = []
 
 [project.optional-dependencies]
-nats = ["nats-py>=2.6"]
+nats = ["nats-py>=2.11.0"]
 
 [project.urls]
 "Source" = "https://example.com/unimessaging"

@@ -70,4 +70,4 @@ Following this workflow keeps infrastructure details isolated and ensures your b
 
 ## Examples
 
-- `examples/fastapi` shows how to mount the facade inside a FastAPI service with a `/notifications` endpoint. The example uses the `NATSNotificationGateway`, so you'll need a running NATS server plus the optional `nats-py` dependency.
+- `examples/fastapi` shows how to mount the facade inside a FastAPI service with `/notifications` (publish) and `/notifications/received` (listener inspection) endpoints. The example uses the `NATSNotificationGateway`, so you'll need a running NATS server plus the optional `nats-py` dependency.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
@@ -34,6 +35,13 @@ class NATSNotificationGateway(NotificationGateway):
                 "nats-py is required to use NATSNotificationGateway. Install via 'pip install nats-py'."
             ) from _IMPORT_ERROR
         self._config = config or NATSConfig()
+        self._logger = logging.getLogger(__name__)
+        self._logger.debug(
+            "Initialized NATSNotificationGateway (url=%s, subject=%s, client=%s)",
+            self._config.url,
+            self._config.subject,
+            self._config.client_name,
+        )
 
     def deliver(self, message: Message) -> dict:
         """Publish the message synchronously, hiding the async details."""
@@ -51,8 +59,14 @@ class NATSNotificationGateway(NotificationGateway):
     async def _publish(self, message: Message) -> dict:
         assert NATS is not None  # for type-checkers
         nc = NATS()
+        self._logger.debug("Connecting to NATS at %s", self._config.url)
         await nc.connect(self._config.url, name=self._config.client_name)
         payload = message.to_dict()
+        self._logger.info(
+            "Publishing message to %s (recipient=%s)",
+            self._config.subject,
+            payload.get("to"),
+        )
         await nc.publish(self._config.subject, json.dumps(payload).encode("utf-8"))
         await nc.flush(timeout=self._config.flush_timeout)
         await nc.close()

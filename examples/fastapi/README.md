@@ -34,3 +34,15 @@ Expected response:
 ```json
 {"status": "sent", "payload": {"message": "hello", "to": "team", "subject": "notifications.demo"}}
 ```
+
+Verify that the listener consumed the message (only when NATS is enabled):
+
+```bash
+curl http://127.0.0.1:8000/notifications/received
+```
+
+Sample output:
+
+```json
+{"count":1,"items":[{"message":"hello","to":"team","subject":"notifications.demo"}]}
+```
