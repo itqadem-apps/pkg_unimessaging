@@ -25,7 +25,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from unimessaging import send_message
-from unimessaging.infrastructure import (  # noqa: E402
+from unimessaging.adapters import (  # noqa: E402
     InMemoryNotificationGateway,
     NATSConfig,
     NATSNotificationGateway,

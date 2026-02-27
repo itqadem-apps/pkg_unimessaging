@@ -6,8 +6,8 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from unimessaging.application.interfaces import NotificationGateway
-from unimessaging.domain import Message
+from unimessaging.domain.ports import NotificationGateway
+from unimessaging.domain.entities import Message
 
 try:  # Optional dependency to avoid forcing nats-py on all users.
     from nats.aio.client import Client as NATS

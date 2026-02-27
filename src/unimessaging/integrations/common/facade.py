@@ -3,9 +3,10 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Optional
 
-from unimessaging.application import SendMessageRequest, SendMessageUseCase
-from unimessaging.application.interfaces import NotificationGateway
-from unimessaging.infrastructure import InMemoryNotificationGateway
+from unimessaging.application.dto import SendMessageRequest
+from unimessaging.application.use_cases import SendMessageUseCase
+from unimessaging.domain.ports import NotificationGateway
+from unimessaging.adapters import InMemoryNotificationGateway
 
 
 def _build_use_case(gateway: Optional[NotificationGateway] = None) -> SendMessageUseCase:

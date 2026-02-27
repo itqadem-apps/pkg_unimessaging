@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from unimessaging.domain import Message
+from unimessaging.domain.entities import Message
 
 
 class NotificationGateway(Protocol):

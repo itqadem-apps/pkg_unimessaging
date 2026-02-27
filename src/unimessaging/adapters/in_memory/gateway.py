@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from unimessaging.domain import Message
-from unimessaging.application.interfaces import NotificationGateway
+from unimessaging.domain.entities import Message
+from unimessaging.domain.ports import NotificationGateway
 
 
 class InMemoryNotificationGateway(NotificationGateway):

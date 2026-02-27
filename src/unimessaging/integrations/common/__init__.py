@@ -1,4 +1,4 @@
-"""Entrypoints / interface adapters exposed to consumers."""
+"""Common integration entrypoints exposed to consumers."""
 
 from .facade import send_message
 

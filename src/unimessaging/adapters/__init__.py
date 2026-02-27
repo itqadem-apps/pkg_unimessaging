@@ -1,9 +1,9 @@
-"""Infrastructure adapters that satisfy application interfaces."""
+"""Adapters that satisfy domain port contracts."""
 
-from .notifiers import InMemoryNotificationGateway
+from .in_memory.gateway import InMemoryNotificationGateway
 
 try:  # Optional dependency: only available when nats-py is installed.
-    from .nats_gateway import NATSConfig, NATSNotificationGateway
+    from .nats.gateway import NATSConfig, NATSNotificationGateway
 except RuntimeError:  # pragma: no cover - triggered when nats-py missing
     NATSNotificationGateway = None  # type: ignore
     NATSConfig = None  # type: ignore

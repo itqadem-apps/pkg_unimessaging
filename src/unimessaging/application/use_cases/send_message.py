@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from unimessaging.domain import Message
+from unimessaging.domain.entities import Message
+from unimessaging.domain.ports import NotificationGateway
 
 from ..dto import SendMessageRequest, SendMessageResponse
-from ..interfaces import NotificationGateway
 
 
 class SendMessageUseCase:
