@@ -4,8 +4,10 @@ The `NATSNotificationGateway` publishes messages to a [NATS](https://nats.io/) s
 
 ## Installation
 
+After installing the core package (see [Installation](Installation)), add the NATS dependency:
+
 ```bash
-pip install unimessaging[nats]
+pip install nats-py>=2.11.0
 ```
 
 ## NATSConfig
@@ -128,7 +130,7 @@ If `nats-py` is not installed, importing `NATSNotificationGateway` from `unimess
 from unimessaging.adapters import NATSNotificationGateway
 
 if NATSNotificationGateway is None:
-    print("NATS support not available, install unimessaging[nats]")
+    print("NATS support not available, install nats-py")
 ```
 
 Attempting to instantiate the class directly when `nats-py` is missing raises `RuntimeError`.

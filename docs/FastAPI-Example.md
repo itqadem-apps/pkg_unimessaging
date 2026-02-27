@@ -6,7 +6,13 @@ The package includes a complete FastAPI demo at `examples/fastapi/app.py` that s
 
 ```bash
 pip install fastapi uvicorn
-pip install unimessaging[nats]  # for NATS support
+pip install nats-py>=2.11.0  # for NATS support
+```
+
+Install unimessaging from the latest [GitHub Release](https://github.com/fritill-team/pkg_unimessaging/releases):
+
+```bash
+pip install "https://github.com/fritill-team/pkg_unimessaging/releases/latest/download/unimessaging-0.0.2-py3-none-any.whl"
 ```
 
 A running NATS server (optional -- falls back to in-memory without it):

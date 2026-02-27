@@ -67,8 +67,10 @@ gateway = NATSNotificationGateway(config)
 
 ### Installation
 
+After installing the core package, add the NATS dependency:
+
 ```bash
-pip install unimessaging[nats]
+pip install nats-py>=2.11.0
 ```
 
 ---

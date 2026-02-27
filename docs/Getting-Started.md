@@ -120,7 +120,7 @@ from unimessaging import (
 )
 ```
 
-For the NATS adapter, import from the adapters sub-package:
+For the NATS adapter (requires `pip install nats-py>=2.11.0`), import from the adapters sub-package:
 
 ```python
 from unimessaging.adapters import NATSNotificationGateway, NATSConfig

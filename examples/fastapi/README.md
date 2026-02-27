@@ -5,7 +5,7 @@ Tiny FastAPI application that wires the `unimessaging.send_message` facade into 
 ## Prerequisites
 
 - A running NATS server (e.g. `docker run -p 4222:4222 nats:latest`). If you skip this, the app falls back to the in-memory gateway.
-- Python dependencies: `fastapi`, `uvicorn`, and the optional NATS extras (`pip install unimessaging[nats]`).
+- Python dependencies: `fastapi`, `uvicorn`, and the optional NATS dependency (`pip install nats-py>=2.11.0`).
 
 ## Run locally
 

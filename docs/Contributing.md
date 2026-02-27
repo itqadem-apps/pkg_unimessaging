@@ -3,15 +3,15 @@
 ## Development Setup
 
 ```bash
-# Clone the monorepo
-git clone <repo-url>
-cd packages/pkg_unimessaging
+# Clone the repo
+git clone git@github.com:fritill-team/pkg_unimessaging.git
+cd pkg_unimessaging
 
 # Create a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 
-# Install with all extras
+# Install with all extras for development
 pip install -e ".[dev,nats]"
 ```
 

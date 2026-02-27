@@ -1,14 +1,24 @@
 # Installation
 
-## Basic Install
+## From GitHub Release (Recommended)
 
-Install the core package (includes the `InMemoryNotificationGateway`):
+Install the latest wheel directly from [GitHub Releases](https://github.com/fritill-team/pkg_unimessaging/releases):
 
 ```bash
-pip install unimessaging
+pip install "https://github.com/fritill-team/pkg_unimessaging/releases/latest/download/unimessaging-0.0.2-py3-none-any.whl"
 ```
 
-Or install from source in the monorepo:
+## From Git Tag
+
+Install from a specific release tag:
+
+```bash
+pip install "git+https://github.com/fritill-team/pkg_unimessaging.git@pkg_unimessaging-v0.0.2"
+```
+
+## From Source (Monorepo)
+
+For local development in the monorepo:
 
 ```bash
 pip install -e packages/pkg_unimessaging
@@ -16,26 +26,26 @@ pip install -e packages/pkg_unimessaging
 
 ## With NATS Support
 
-To use the `NATSNotificationGateway`, install with the `nats` extra:
+After installing the core package, add the NATS transport dependency:
 
 ```bash
-pip install unimessaging[nats]
+pip install nats-py>=2.11.0
 ```
 
-This pulls in [`nats-py`](https://github.com/nats-io/nats.py) >= 2.11.0.
+This enables the `NATSNotificationGateway`. See [NATS Gateway](NATS-Gateway) for details.
 
 ## Development Install
 
 For development (adds `pytest` and `mypy`):
 
 ```bash
-pip install -e "packages/pkg_unimessaging[dev]"
+pip install -e ".[dev]"
 ```
 
 Or with all extras:
 
 ```bash
-pip install -e "packages/pkg_unimessaging[dev,nats]"
+pip install -e ".[dev,nats]"
 ```
 
 ## Requirements

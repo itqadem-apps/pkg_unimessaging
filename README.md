@@ -21,10 +21,23 @@ src/unimessaging/
 
 ## Installation
 
+Install from the latest [GitHub Release](https://github.com/fritill-team/pkg_unimessaging/releases) wheel:
+
 ```bash
-pip install unimessaging            # core (in-memory gateway only)
-pip install unimessaging[nats]      # with NATS transport support
-pip install unimessaging[dev]       # with pytest and mypy
+# core (in-memory gateway only)
+pip install "https://github.com/fritill-team/pkg_unimessaging/releases/latest/download/unimessaging-0.0.2-py3-none-any.whl"
+```
+
+Or install from a specific release tag:
+
+```bash
+pip install "git+https://github.com/fritill-team/pkg_unimessaging.git@pkg_unimessaging-v0.0.2"
+```
+
+Then install optional extras as needed:
+
+```bash
+pip install nats-py>=2.11.0   # for NATS transport support
 ```
 
 ## Usage
