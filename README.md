@@ -11,7 +11,9 @@ src/unimessaging/
 ├── adapters/              # Gateway implementations (in-memory, NATS, …)
 │   ├── in_memory/
 │   └── nats/
-└── integrations/common/   # Facade exposed to package consumers
+├── broker/                # Transport-agnostic pub/sub infrastructure
+├── outbox/                # Transactional outbox relay (requires sqlalchemy)
+└── integrations/          # Framework integrations (FastAPI, facade)
 ```
 
 - **Domain** defines a `Message` value object, validates invariants up front, and declares the `NotificationGateway` port protocol.
@@ -77,6 +79,29 @@ gateway = NATSNotificationGateway(NATSConfig(
 ))
 send_message("Order confirmed", "user-42", gateway=gateway)
 ```
+
+## Outbox Relay
+
+The package includes a transactional outbox relay for publishing domain events through NATS. It polls a PostgreSQL `outbox` table and publishes pending rows to messaging subjects with automatic retries and exponential back-off.
+
+```bash
+pip install -e ".[outbox]"   # adds sqlalchemy[asyncio]
+```
+
+```python
+from unimessaging.outbox import OutboxRelay, relay_loop
+
+relay = OutboxRelay(
+    session_factory=async_sessionmaker,
+    messaging=unified_messaging,
+    subject_prefix="articles",       # → "articles.event", "articles.therapy_session", ...
+)
+
+# Run as a background asyncio task
+task = asyncio.create_task(relay_loop(relay))
+```
+
+See [Outbox Relay](../../wiki/Outbox-Relay) for the full guide.
 
 ## Development
 

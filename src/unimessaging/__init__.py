@@ -60,4 +60,6 @@ __all__ = [
     "build_notification_headers",
     # Facade
     "send_message",
+    # Outbox (requires sqlalchemy — import via unimessaging.outbox)
+    "outbox",
 ]

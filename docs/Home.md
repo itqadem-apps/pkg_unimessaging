@@ -36,6 +36,7 @@ That single function call wires up the entire use case, domain validation, and g
 | [Custom Adapters](Custom-Adapters) | How to implement your own `NotificationGateway` |
 | [Integrations](Integrations) | The `send_message` facade and how wiring works |
 | [NATS Gateway](NATS-Gateway) | Detailed guide for the NATS adapter, configuration, and async behavior |
+| [Outbox Relay](Outbox-Relay) | Transactional outbox pattern for reliable event publishing |
 | [FastAPI Example](FastAPI-Example) | Full walkthrough of the included FastAPI demo app |
 | [Testing](Testing) | Running the test suite and writing tests for your adapters |
 | [API Reference](API-Reference) | Complete reference for every public symbol |

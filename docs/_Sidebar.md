@@ -14,6 +14,7 @@
 - [Getting Started](Getting-Started)
 - [Custom Adapters](Custom-Adapters)
 - [NATS Gateway](NATS-Gateway)
+- [Outbox Relay](Outbox-Relay)
 - [FastAPI Example](FastAPI-Example)
 
 **Reference**

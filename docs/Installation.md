@@ -24,15 +24,39 @@ For local development in the monorepo:
 pip install -e packages/pkg_unimessaging
 ```
 
-## With NATS Support
+## Optional Extras
 
-After installing the core package, add the NATS transport dependency:
+### NATS Support
 
 ```bash
-pip install nats-py>=2.11.0
+pip install -e ".[nats]"
 ```
 
-This enables the `NATSNotificationGateway`. See [NATS Gateway](NATS-Gateway) for details.
+Adds `nats-py>=2.11.0`. Enables the `NATSNotificationGateway` and `NATSAdapter`. See [NATS Gateway](NATS-Gateway) for details.
+
+### Outbox Relay
+
+```bash
+pip install -e ".[outbox]"
+```
+
+Adds `sqlalchemy[asyncio]>=2.0`. Enables the transactional outbox relay for reliable event publishing. See [Outbox Relay](Outbox-Relay) for details.
+
+### FastAPI Integration
+
+```bash
+pip install -e ".[fastapi]"
+```
+
+Adds `fastapi>=0.100`. Enables `start_messaging()` / `stop_messaging()` lifespan helpers.
+
+### All Extras
+
+```bash
+pip install -e ".[all]"
+```
+
+Installs all optional dependencies (NATS, FastAPI, SQLAlchemy).
 
 ## Development Install
 
@@ -45,7 +69,7 @@ pip install -e ".[dev]"
 Or with all extras:
 
 ```bash
-pip install -e ".[dev,nats]"
+pip install -e ".[dev,all]"
 ```
 
 ## Requirements
@@ -53,6 +77,8 @@ pip install -e ".[dev,nats]"
 - **Python** >= 3.12
 - **No runtime dependencies** for the core package
 - **nats-py** >= 2.11.0 (optional, for NATS transport)
+- **sqlalchemy[asyncio]** >= 2.0 (optional, for outbox relay)
+- **fastapi** >= 0.100 (optional, for FastAPI integration)
 
 ## Verify Installation
 

@@ -161,3 +161,67 @@ Frozen dataclass for NATS connection settings.
 | `subject` | `str` | `"notifications.default"` |
 | `client_name` | `str` | `"unimessaging"` |
 | `flush_timeout` | `float` | `2.0` |
+
+---
+
+## Outbox Relay
+
+> Requires the `outbox` extra: `pip install unimessaging[outbox]`
+
+**Module:** `unimessaging.outbox`
+**Import:** `from unimessaging.outbox import OutboxRelay, relay_loop`
+
+---
+
+## `OutboxRelay(session_factory, messaging, *, subject_prefix, table_name="outbox", max_retries=10, base_backoff=5)`
+
+Polls a PostgreSQL outbox table for pending rows and publishes them via a messaging backend.
+
+**Constructor Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `session_factory` | `async_sessionmaker[AsyncSession]` | *required* | SQLAlchemy async session factory |
+| `messaging` | any with `async publish(subject, data)` | *required* | Messaging client (e.g. `UnifiedMessaging`) |
+| `subject_prefix` | `str` | *required* | Prefix for NATS subjects (e.g. `"articles"` → `"articles.event"`) |
+| `table_name` | `str` | `"outbox"` | Name of the outbox table |
+| `max_retries` | `int` | `10` | Max attempts before marking a row `FAILED` |
+| `base_backoff` | `int` | `5` | Base delay in seconds for exponential back-off |
+
+**Methods:**
+
+### `async process_batch(batch_size=50) -> int`
+
+Process up to `batch_size` pending outbox rows. Returns the number of rows successfully published.
+
+Rows are locked with `FOR UPDATE SKIP LOCKED` to allow concurrent relay instances. On success, rows are marked `PUBLISHED`. On failure, retries are incremented with exponential back-off. After `max_retries`, rows are marked `FAILED`.
+
+---
+
+## `async relay_loop(relay, *, poll_interval=0.5) -> None`
+
+Run the relay in an infinite loop, sleeping `poll_interval` seconds when idle. Designed to be run as a background `asyncio.Task`. Cancel the task to stop gracefully.
+
+```python
+task = asyncio.create_task(relay_loop(relay))
+# ... on shutdown:
+task.cancel()
+await task
+```
+
+---
+
+### Expected Outbox Table Schema
+
+The relay operates on rows with these columns:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `aggregate_type` | `str` | Used to build the subject: `{prefix}.{aggregate_type}` |
+| `payload` | JSONB | Event payload, published as JSON bytes |
+| `status` | `str` | `PENDING`, `PUBLISHED`, or `FAILED` |
+| `retries` | `int` | Current retry count |
+| `available_at` | `datetime` | Next eligible processing time |
+| `published_at` | `datetime | None` | Set on successful publish |
+| `last_error` | `str | None` | Last error message on failure |
