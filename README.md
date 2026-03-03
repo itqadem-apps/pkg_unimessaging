@@ -13,7 +13,8 @@ src/unimessaging/
 │   └── nats/
 ├── broker/                # Transport-agnostic pub/sub infrastructure
 ├── outbox/                # Transactional outbox relay (requires sqlalchemy)
-└── integrations/          # Framework integrations (FastAPI, facade)
+├── outbox_django/         # Django transactional outbox (requires django)
+└── integrations/          # Framework integrations (FastAPI, Django, facade)
 ```
 
 - **Domain** defines a `Message` value object, validates invariants up front, and declares the `NotificationGateway` port protocol.
@@ -102,6 +103,36 @@ task = asyncio.create_task(relay_loop(relay))
 ```
 
 See [Outbox Relay](../../wiki/Outbox-Relay) for the full guide.
+
+### Django Outbox
+
+For Django services, the package provides a sync outbox with a management command relay:
+
+```bash
+pip install -e ".[django]"   # adds django>=4.2
+```
+
+```python
+# settings.py
+INSTALLED_APPS = [..., "unimessaging.outbox_django"]
+
+# In views / use cases:
+from django.db import transaction
+from unimessaging.outbox_django import DjangoOutboxRepository, DjangoOutboxEventBus
+
+repo = DjangoOutboxRepository()
+bus = DjangoOutboxEventBus(repo)
+
+with transaction.atomic():
+    reservation.save()
+    bus.publish(ReservationCreated(...))  # sync, same transaction
+```
+
+Run the relay as a separate process:
+
+```bash
+python manage.py outbox_relay --subject-prefix reservations
+```
 
 ## Development
 

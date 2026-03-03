@@ -274,6 +274,108 @@ await task
 
 ---
 
+---
+
+## Django Outbox
+
+> Requires the `django` extra: `pip install unimessaging[django]`
+
+**Module:** `unimessaging.outbox_django`
+**Import:** `from unimessaging.outbox_django import OutboxRecord, OutboxStatus, DjangoOutboxRepository, DjangoOutboxEventBus, DjangoOutboxRelay`
+
+---
+
+## `OutboxRecord`
+
+Django model providing the outbox table. Add `"unimessaging.outbox_django"` to `INSTALLED_APPS` and run migrations.
+
+Same schema as `OutboxMixin` but using Django field types.
+
+**Meta:**
+- `app_label = "unimessaging"`
+- `db_table = "outbox"`
+
+---
+
+## `DjangoOutboxRepository()`
+
+Writes outbox rows using Django ORM within the caller's `transaction.atomic()`.
+
+**Methods:**
+
+### `add(*, aggregate_type, aggregate_id, event_type, payload, headers=None, occurred_at) -> None`
+
+Insert an outbox row via `OutboxRecord.objects.create()`.
+
+---
+
+## `DjangoOutboxEventBus(outbox_repo)`
+
+Synchronous event bus for Django services. Serializes dataclass domain events into outbox rows using the same `_serialize` helper as the async `OutboxEventBus`.
+
+**Constructor Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `outbox_repo` | `DjangoOutboxRepository` | Repository instance |
+
+**Methods:**
+
+### `publish(event) -> None`
+
+Serialize a single dataclass event and write it to the outbox (sync).
+
+### `publish_many(events) -> None`
+
+Serialize and write multiple events (sync).
+
+---
+
+## `DjangoOutboxRelay(messaging, *, subject_prefix, table_name="outbox", max_retries=10, base_backoff=5)`
+
+Polls the outbox table using raw SQL and publishes rows via async messaging, bridging sync DB operations with async NATS publishing.
+
+**Constructor Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `messaging` | any with `async publish(subject, data)` | *required* | Messaging client (e.g. `UnifiedMessaging`) |
+| `subject_prefix` | `str` | *required* | Prefix for NATS subjects |
+| `table_name` | `str` | `"outbox"` | Name of the outbox table |
+| `max_retries` | `int` | `10` | Max attempts before marking `FAILED` |
+| `base_backoff` | `int` | `5` | Base delay in seconds for exponential back-off |
+
+**Methods:**
+
+### `process_batch(batch_size=50) -> int`
+
+Process up to `batch_size` pending outbox rows. Uses `FOR UPDATE SKIP LOCKED` for safe concurrent processing. Returns the number of rows successfully published.
+
+---
+
+## Django Integration
+
+**Module:** `unimessaging.integrations.django`
+**Import:** `from unimessaging.integrations.django import start_messaging, stop_messaging, get_messaging, get_broker`
+
+### `async start_messaging(*, subjects, service_name, url="nats://localhost:4222", enable_durable=False, registry=None) -> UnifiedMessageBroker`
+
+Create and start a broker, storing it at module level (Django has no `app.state`).
+
+### `async stop_messaging() -> None`
+
+Stop the module-level broker.
+
+### `get_messaging() -> UnifiedMessaging | None`
+
+Return the messaging client (or `None` if not started).
+
+### `get_broker() -> UnifiedMessageBroker | None`
+
+Return the broker instance (or `None` if not started).
+
+---
+
 ### Expected Outbox Table Schema
 
 The relay operates on rows with these columns:

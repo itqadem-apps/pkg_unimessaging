@@ -213,6 +213,107 @@ import logging
 logging.getLogger("unimessaging.outbox").setLevel(logging.DEBUG)
 ```
 
+## Django Setup
+
+The package also provides a Django-native outbox module with sync Django ORM operations and a management command for running the relay.
+
+### Installation
+
+```bash
+pip install unimessaging[django]
+```
+
+### Components
+
+| Component | Responsibility |
+|---|---|
+| `OutboxRecord` | Django model defining the outbox table schema |
+| `DjangoOutboxRepository` | Writes outbox rows within the caller's `transaction.atomic()` |
+| `DjangoOutboxEventBus` | Sync event bus — serializes dataclass events into outbox rows |
+| `DjangoOutboxRelay` | Sync DB polling + async NATS publish bridge |
+| `outbox_relay` | Management command to run the relay as a process |
+
+### 1. Add to INSTALLED_APPS
+
+```python
+# settings.py
+INSTALLED_APPS = [
+    ...,
+    "unimessaging.outbox_django",
+]
+```
+
+Then create and run migrations:
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+### 2. Wire the EventBus
+
+```python
+from django.db import transaction
+from unimessaging.outbox_django import DjangoOutboxRepository, DjangoOutboxEventBus
+
+repo = DjangoOutboxRepository()
+bus = DjangoOutboxEventBus(repo)
+
+with transaction.atomic():
+    reservation.save()
+    bus.publish(ReservationCreated(...))  # sync, same transaction
+```
+
+The `DjangoOutboxEventBus` satisfies any `EventBus` protocol with `publish(event)` and `publish_many(events)` via structural (duck) typing. It reuses the same serialization helpers as the async `OutboxEventBus`.
+
+### 3. Run the relay
+
+Start as a separate process via the management command:
+
+```bash
+python manage.py outbox_relay --subject-prefix reservations
+python manage.py outbox_relay --subject-prefix reservations --nats-url nats://nats:4222 --poll-interval 1.0 --batch-size 100
+```
+
+**Command arguments:**
+
+| Argument | Default | Description |
+|---|---|---|
+| `--subject-prefix` | *required* | Prefix for NATS subjects |
+| `--nats-url` | `nats://localhost:4222` | NATS server URL |
+| `--service-name` | `django-service` | Service name for the broker |
+| `--poll-interval` | `0.5` | Seconds to sleep when idle |
+| `--batch-size` | `50` | Max rows per batch |
+
+### 4. Publish events from views / use cases
+
+```python
+with transaction.atomic():
+    reservation.save()
+    bus.publish(ReservationCreated(
+        aggregate_type="reservation",
+        aggregate_id=reservation.id,
+        event_id=uuid4(),
+        occurred_at=datetime.now(timezone.utc),
+        ...
+    ))
+    # Both writes happen in the same transaction
+```
+
+### Django Configuration
+
+```python
+relay = DjangoOutboxRelay(
+    messaging,
+    subject_prefix="reservations",     # required — builds "reservations.{aggregate_type}"
+    table_name="outbox",               # default: "outbox"
+    max_retries=10,                    # default: 10 — FAILED after this many attempts
+    base_backoff=5,                    # default: 5 seconds — exponential: 5, 10, 20, ...
+)
+```
+
+---
+
 ## What Each Service Owns vs. What the Package Owns
 
 | Owned by `unimessaging` | Owned by each service |
