@@ -35,9 +35,12 @@ src/unimessaging/
 │   ├── config.py                   # MessagingConfig
 │   ├── registry.py                 # HandlerRegistry + module-level helpers
 │   └── utils.py                    # Client factory + payload helpers
-├── outbox/                         # Transactional outbox relay (requires sqlalchemy)
-│   ├── __init__.py                 # Exports OutboxRelay, relay_loop
-│   └── relay.py                    # OutboxRelay class + relay_loop coroutine
+├── outbox/                         # Transactional outbox (requires sqlalchemy)
+│   ├── __init__.py                 # Exports all outbox components
+│   ├── models.py                   # OutboxMixin + OutboxStatus (table schema)
+│   ├── repository.py               # OutboxRepository (write rows in caller's txn)
+│   ├── event_bus.py                # OutboxEventBus (generic dataclass serializer)
+│   └── relay.py                    # OutboxRelay + relay_loop (background publisher)
 └── integrations/                   # Layer 4: Facade / entrypoints
     ├── __init__.py
     ├── common/
@@ -86,11 +89,14 @@ Transport-agnostic pub/sub infrastructure. Provides a unified interface for publ
 
 ### Outbox (`outbox/`)
 
-Transactional outbox relay for reliable event publishing. Polls a PostgreSQL `outbox` table for pending rows and publishes them via the messaging backend with automatic retries and exponential back-off. Requires `sqlalchemy[asyncio]` (install via `pip install unimessaging[outbox]`).
+Complete transactional outbox infrastructure for reliable event publishing. Requires `sqlalchemy[asyncio]` (install via `pip install unimessaging[outbox]`).
 
-- **relay.py** -- `OutboxRelay` class and `relay_loop` coroutine
+- **models.py** -- `OutboxMixin` table schema mixin and `OutboxStatus` enum. Services inherit with their `Base` to create the concrete ORM class.
+- **repository.py** -- `OutboxRepository` writes outbox rows within the caller's DB transaction (shared session).
+- **event_bus.py** -- `OutboxEventBus` serializes any dataclass event into outbox rows via duck typing. No domain imports needed.
+- **relay.py** -- `OutboxRelay` polls pending rows and publishes them via messaging. `relay_loop` wraps it in an infinite async task.
 
-This module is pure infrastructure with no domain dependencies. Each service provides its own `subject_prefix` to build NATS subjects (e.g. `"articles"` → `"articles.event"`).
+This module is pure infrastructure with no domain dependencies. Each service provides its own domain events and `subject_prefix` to build NATS subjects (e.g. `"articles"` → `"articles.event"`).
 
 ### Integrations (`integrations/`)
 

@@ -1,6 +1,6 @@
 # Outbox Relay
 
-The outbox relay provides reliable, at-least-once event publishing through the [transactional outbox pattern](https://microservices.io/patterns/data/transactional-outbox.html). Domain events are written to an `outbox` table within the same database transaction as the business data, then a background relay process picks them up and publishes to NATS.
+The outbox module provides reliable, at-least-once event publishing through the [transactional outbox pattern](https://microservices.io/patterns/data/transactional-outbox.html). Domain events are written to an `outbox` table within the same database transaction as the business data, then a background relay process picks them up and publishes to NATS.
 
 ## Installation
 
@@ -10,50 +10,82 @@ pip install unimessaging[outbox]
 
 This adds `sqlalchemy[asyncio]>=2.0` as a dependency.
 
+## Components
+
+| Component | Responsibility |
+|---|---|
+| `OutboxMixin` | SQLAlchemy mixin defining the outbox table schema |
+| `OutboxRepository` | Writes outbox rows within the caller's DB transaction |
+| `OutboxEventBus` | Serializes dataclass events into outbox rows (generic, duck-typed) |
+| `OutboxRelay` | Background poller that publishes pending rows to NATS |
+| `relay_loop` | Infinite async loop wrapper for the relay |
+
 ## How It Works
 
 ```
-Use Case ─── (same DB transaction) ──→ INSERT into outbox table
-                                              │
-                                       OutboxRelay (background task)
-                                              │
-                                       messaging.publish(subject, data)
-                                              │
-                                       NATS subject: "{prefix}.{aggregate_type}"
+Use Case ──→ OutboxEventBus.publish(event)
+                     │
+                     ▼
+             OutboxRepository.add(...)  ← same DB transaction as domain write
+                     │
+                     ▼
+              outbox table row (PENDING)
+                     │
+              OutboxRelay (background task)
+                     │
+                     ▼
+              messaging.publish(subject, data)
+                     │
+              NATS subject: "{prefix}.{aggregate_type}"
 ```
 
-1. Your use case writes an event to the `outbox` table inside the same transaction as the domain write. This guarantees atomicity — if the transaction rolls back, the event is never published.
+1. Your use case calls `await bus.publish(event)`. The `OutboxEventBus` serializes the dataclass event and writes it to the outbox table via `OutboxRepository` — inside the same transaction as the domain write.
 2. The `OutboxRelay` polls for `PENDING` rows with `FOR UPDATE SKIP LOCKED`, ensuring safe concurrent processing.
 3. Each row is published to a NATS subject built from `subject_prefix` + `aggregate_type` (e.g. `"articles.event"`).
 4. On success the row is marked `PUBLISHED`. On failure, retries increment with exponential back-off until `max_retries`, after which the row is marked `FAILED`.
 
-## Usage
+## Setup Guide
 
-### Basic Setup
+### 1. Create the ORM model
+
+Inherit `OutboxMixin` with your project's declarative `Base`:
 
 ```python
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from unimessaging.outbox import OutboxRelay, relay_loop
+# infra/database/orm/outbox.py
+from unimessaging.outbox import OutboxMixin
+from .base import Base
 
-engine = create_async_engine("postgresql+asyncpg://...")
-session_factory = async_sessionmaker(bind=engine, expire_on_commit=False)
-
-relay = OutboxRelay(
-    session_factory=session_factory,
-    messaging=unified_messaging,   # any object with async publish(subject, data)
-    subject_prefix="articles",
-)
-
-# Run as a background task
-task = asyncio.create_task(relay_loop(relay))
+class OutboxORM(OutboxMixin, Base):
+    pass
 ```
 
-### FastAPI Lifespan
+Then generate the Alembic migration:
+
+```bash
+alembic revision --autogenerate -m "add outbox table"
+alembic upgrade head
+```
+
+### 2. Wire the EventBus into your UoW
 
 ```python
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
+# interface/common/uow.py
+from unimessaging.outbox import OutboxRepository, OutboxEventBus
+from infra.database.orm.outbox import OutboxORM
+
+def _build_uow(session):
+    outbox_repo = OutboxRepository(session, OutboxORM)
+    event_bus = OutboxEventBus(outbox_repo)
+    return YourUnitOfWork(session=session, event_bus=event_bus)
+```
+
+The `OutboxEventBus` satisfies any `EventBus` protocol with `async publish(event)` and `async publish_many(events)` via structural (duck) typing. No domain imports needed in the package.
+
+### 3. Start the relay in your lifespan
+
+```python
+# infra/lifespan.py
+import asyncio
 from unimessaging.outbox import OutboxRelay, relay_loop
 from unimessaging.integrations.fastapi import start_messaging, stop_messaging
 
@@ -62,7 +94,11 @@ async def lifespan(app: FastAPI):
     await start_messaging(app, subjects=[...], service_name="my-service", url="nats://localhost:4222")
 
     messaging = app.state.messaging
-    relay = OutboxRelay(session_factory, messaging, subject_prefix="my-service")
+    relay = OutboxRelay(
+        session_factory=sessionmanager._sessionmaker,
+        messaging=messaging,
+        subject_prefix="articles",
+    )
     relay_task = asyncio.create_task(relay_loop(relay))
 
     try:
@@ -76,7 +112,16 @@ async def lifespan(app: FastAPI):
         await stop_messaging(app)
 ```
 
-### Configuration
+### 4. Publish events from use cases
+
+```python
+async with uow:
+    article = await uow.articles.save(article)
+    await uow.event_bus.publish(ArticleCreated(aggregate_id=article.id, ...))
+    # Both writes happen in the same transaction
+```
+
+## Configuration
 
 ```python
 relay = OutboxRelay(
@@ -124,7 +169,7 @@ register_handler("articles.event", handle_event_only)
 
 ## Outbox Table Schema
 
-The relay expects a table with these columns:
+The `OutboxMixin` defines this schema. You can also create it manually:
 
 ```sql
 CREATE TABLE outbox (
@@ -168,16 +213,14 @@ import logging
 logging.getLogger("unimessaging.outbox").setLevel(logging.DEBUG)
 ```
 
-## Architecture Notes
+## What Each Service Owns vs. What the Package Owns
 
-The outbox relay is **pure infrastructure** — it has no domain dependencies. It only knows about:
+| Owned by `unimessaging` | Owned by each service |
+|---|---|
+| `OutboxMixin` (table schema) | Concrete `OutboxORM(OutboxMixin, Base)` (2 lines) |
+| `OutboxRepository` (generic write) | Alembic migration (auto-generated) |
+| `OutboxEventBus` (generic serializer) | Domain event classes (`EventCreated`, etc.) |
+| `OutboxRelay` + `relay_loop` | `EventBus` protocol in `domain/ports/` |
+| `OutboxStatus` enum | UoW + lifespan wiring |
 
-- SQL rows (generic columns: `aggregate_type`, `payload`, `status`)
-- NATS subjects (strings)
-- JSON bytes
-
-Each service provides its own domain-aware `EventBus` implementation that serializes domain events into outbox rows. The relay simply reads those rows and publishes them. This separation means:
-
-- The relay is reusable across all services in the monorepo
-- Domain event structure is owned by each service
-- The relay can be tested independently with an in-memory broker
+The package handles all outbox infrastructure. The service only defines its domain events and wires the shared session.

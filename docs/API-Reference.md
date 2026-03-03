@@ -164,12 +164,75 @@ Frozen dataclass for NATS connection settings.
 
 ---
 
-## Outbox Relay
+## Outbox
 
 > Requires the `outbox` extra: `pip install unimessaging[outbox]`
 
 **Module:** `unimessaging.outbox`
-**Import:** `from unimessaging.outbox import OutboxRelay, relay_loop`
+**Import:** `from unimessaging.outbox import OutboxMixin, OutboxStatus, OutboxRepository, OutboxEventBus, OutboxRelay, relay_loop`
+
+---
+
+## `OutboxMixin`
+
+SQLAlchemy mixin providing all outbox table columns. Inherit with your project's declarative `Base`:
+
+```python
+from unimessaging.outbox import OutboxMixin
+from your_app.orm import Base
+
+class OutboxORM(OutboxMixin, Base):
+    pass
+```
+
+Alembic will auto-detect the table via `--autogenerate`.
+
+---
+
+## `OutboxStatus`
+
+Enum with values: `PENDING`, `PUBLISHED`, `FAILED`.
+
+---
+
+## `OutboxRepository(session, model_class)`
+
+Writes outbox rows within the caller's database transaction.
+
+**Constructor Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `session` | `AsyncSession` | The SQLAlchemy async session (shared with the service's UoW) |
+| `model_class` | class | The concrete ORM class inheriting from `OutboxMixin` + `Base` |
+
+**Methods:**
+
+### `async add(*, aggregate_type, aggregate_id, event_type, payload, headers=None, occurred_at) -> None`
+
+Insert an outbox row and flush (making it visible within the current transaction).
+
+---
+
+## `OutboxEventBus(outbox_repo)`
+
+Serializes dataclass domain events into outbox rows. Works with any dataclass event that has `aggregate_type`, `aggregate_id`, `event_id`, and `occurred_at` attributes — no domain imports required (structural typing).
+
+**Constructor Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `outbox_repo` | `OutboxRepository` | Repository sharing the UoW's session |
+
+**Methods:**
+
+### `async publish(event) -> None`
+
+Serialize a single dataclass event and write it to the outbox.
+
+### `async publish_many(events) -> None`
+
+Serialize and write multiple events.
 
 ---
 
