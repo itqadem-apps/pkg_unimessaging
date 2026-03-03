@@ -4,7 +4,7 @@ All public symbols are exported from the top-level `unimessaging` package.
 
 ```python
 import unimessaging
-print(unimessaging.__version__)  # "0.0.2"
+print(unimessaging.__version__)  # "0.6.0"
 print(unimessaging.__all__)
 ```
 
@@ -127,6 +127,15 @@ Echo adapter. Returns `message.to_dict()` from `deliver()`. No dependencies.
 
 **Methods:**
 - `deliver(message: Message) -> dict`
+
+---
+
+## `InMemoryBrokerAdapter()`
+
+**Module:** `unimessaging.adapters.in_memory_broker`
+**Import:** `from unimessaging import InMemoryBrokerAdapter`
+
+In-memory implementation of `AsyncMessagingPort` for testing pub/sub without a real NATS server.
 
 ---
 
@@ -271,8 +280,6 @@ task = asyncio.create_task(relay_loop(relay))
 task.cancel()
 await task
 ```
-
----
 
 ---
 

@@ -28,13 +28,13 @@ Install from the latest [GitHub Release](https://github.com/fritill-team/pkg_uni
 
 ```bash
 # core (in-memory gateway only)
-pip install "https://github.com/fritill-team/pkg_unimessaging/releases/latest/download/unimessaging-0.0.2-py3-none-any.whl"
+pip install "https://github.com/fritill-team/pkg_unimessaging/releases/latest/download/unimessaging-0.6.0-py3-none-any.whl"
 ```
 
 Or install from a specific release tag:
 
 ```bash
-pip install "git+https://github.com/fritill-team/pkg_unimessaging.git@pkg_unimessaging-v0.0.2"
+pip install "git+https://github.com/fritill-team/pkg_unimessaging.git@pkg_unimessaging-v0.6.0"
 ```
 
 Then install optional extras as needed:

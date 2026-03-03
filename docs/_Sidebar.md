@@ -16,6 +16,7 @@
 - [NATS Gateway](NATS-Gateway)
 - [Outbox Relay](Outbox-Relay)
 - [FastAPI Example](FastAPI-Example)
+- [Django Integration](Django-Integration)
 
 **Reference**
 - [API Reference](API-Reference)

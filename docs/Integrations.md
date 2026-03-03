@@ -1,13 +1,13 @@
 # Integrations
 
-The integrations layer wires use cases with adapters and exposes a consumer-friendly API. It lives under `src/unimessaging/integrations/common/`.
+The integrations layer wires use cases with adapters and exposes consumer-friendly APIs. It lives under `src/unimessaging/integrations/`.
 
 ## The `send_message` Facade
 
 **Module:** `unimessaging.integrations.common.facade`
 **Also exported from:** `unimessaging` (top-level)
 
-This is the primary entry point for most consumers.
+This is the primary entry point for simple notification use cases.
 
 ### Signature
 
@@ -83,3 +83,140 @@ send_message("Order shipped", "user-42", gateway=nats_gw)
 | `ValueError("recipient is required")` | `recipient` is `None` |
 | `InvalidMessageError` | Empty/whitespace `message` or `recipient` |
 | `RuntimeError` | NATS gateway called inside an active event loop |
+
+---
+
+## FastAPI Integration
+
+**Module:** `unimessaging.integrations.fastapi`
+**Extra:** `pip install unimessaging[fastapi]`
+
+Provides lifespan helpers that manage the messaging broker lifecycle and attach it to FastAPI's `app.state`.
+
+### `start_messaging()`
+
+```python
+async def start_messaging(
+    app: FastAPI,
+    *,
+    subjects: list[str],
+    service_name: str,
+    url: str = "nats://localhost:4222",
+    enable_durable: bool = False,
+    registry: HandlerRegistry | None = None,
+) -> UnifiedMessageBroker
+```
+
+Creates and starts a `UnifiedMessageBroker`, then attaches it to `app.state`:
+- `app.state.messaging_broker` — the full broker instance
+- `app.state.messaging` — the `UnifiedMessaging` client facade
+
+### `stop_messaging()`
+
+```python
+async def stop_messaging(app: FastAPI) -> None
+```
+
+Stops the broker and cleans up `app.state`.
+
+### Usage
+
+```python
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from unimessaging.integrations.fastapi import start_messaging, stop_messaging
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await start_messaging(
+        app,
+        subjects=["notifications.>"],
+        service_name="my-service",
+        url="nats://localhost:4222",
+    )
+    try:
+        yield
+    finally:
+        await stop_messaging(app)
+
+app = FastAPI(lifespan=lifespan)
+```
+
+See [FastAPI Example](FastAPI-Example) for a full walkthrough.
+
+---
+
+## Django Integration
+
+**Module:** `unimessaging.integrations.django`
+**Extra:** `pip install unimessaging[django]`
+
+Provides the same broker lifecycle helpers as the FastAPI integration, but uses module-level state instead of `app.state` (since Django has no equivalent).
+
+### `start_messaging()`
+
+```python
+async def start_messaging(
+    *,
+    subjects: list[str],
+    service_name: str,
+    url: str = "nats://localhost:4222",
+    enable_durable: bool = False,
+    registry: HandlerRegistry | None = None,
+) -> UnifiedMessageBroker
+```
+
+Creates and starts a `UnifiedMessageBroker`, storing it at module level.
+
+### `stop_messaging()`
+
+```python
+async def stop_messaging() -> None
+```
+
+Stops the module-level broker and clears state.
+
+### `get_messaging()`
+
+```python
+def get_messaging() -> UnifiedMessaging | None
+```
+
+Returns the `UnifiedMessaging` client, or `None` if the broker hasn't been started.
+
+### `get_broker()`
+
+```python
+def get_broker() -> UnifiedMessageBroker | None
+```
+
+Returns the broker instance, or `None` if not started.
+
+### Usage
+
+```python
+import asyncio
+from unimessaging.integrations.django import start_messaging, stop_messaging, get_messaging
+
+# At startup (e.g. AppConfig.ready() or a management command):
+loop = asyncio.get_event_loop()
+loop.run_until_complete(start_messaging(
+    subjects=["reservations.>"],
+    service_name="reservations-service",
+    url="nats://localhost:4222",
+))
+
+# In views or use cases:
+messaging = get_messaging()
+```
+
+### Differences from FastAPI
+
+| Aspect | FastAPI | Django |
+|--------|---------|--------|
+| State storage | `app.state.messaging` | Module-level `_client` |
+| First argument | `app: FastAPI` (required) | None (no app object) |
+| Access pattern | `request.app.state.messaging` | `get_messaging()` |
+| Lifecycle | Async lifespan context manager | Manual start/stop calls |
+
+See [Django Integration](Django-Integration) for a full guide including the outbox relay management command.

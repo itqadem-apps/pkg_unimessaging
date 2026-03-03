@@ -41,14 +41,26 @@ src/unimessaging/
 │   ├── repository.py               # OutboxRepository (write rows in caller's txn)
 │   ├── event_bus.py                # OutboxEventBus (generic dataclass serializer)
 │   └── relay.py                    # OutboxRelay + relay_loop (background publisher)
+├── outbox_django/                  # Django transactional outbox (requires django)
+│   ├── __init__.py                 # Exports all Django outbox components
+│   ├── models.py                   # OutboxRecord Django model + OutboxStatus
+│   ├── repository.py               # DjangoOutboxRepository (sync, Django ORM)
+│   ├── event_bus.py                # DjangoOutboxEventBus (sync, reuses serialization)
+│   └── relay.py                    # DjangoOutboxRelay (sync DB + async publish bridge)
 └── integrations/                   # Layer 4: Facade / entrypoints
     ├── __init__.py
     ├── common/
     │   ├── __init__.py             # Exports send_message
     │   └── facade.py               # send_message() function
-    └── fastapi/
-        ├── __init__.py             # Exports start_messaging, stop_messaging
-        └── startup.py              # FastAPI lifespan helpers
+    ├── fastapi/
+    │   ├── __init__.py             # Exports start_messaging, stop_messaging
+    │   └── startup.py              # FastAPI lifespan helpers
+    └── django/
+        ├── __init__.py             # Exports start_messaging, stop_messaging, get_messaging, get_broker
+        ├── startup.py              # Django messaging helpers (module-level state)
+        └── management/
+            └── commands/
+                └── outbox_relay.py # manage.py outbox_relay command
 ```
 
 ## Layer Responsibilities
@@ -98,12 +110,23 @@ Complete transactional outbox infrastructure for reliable event publishing. Requ
 
 This module is pure infrastructure with no domain dependencies. Each service provides its own domain events and `subject_prefix` to build NATS subjects (e.g. `"articles"` → `"articles.event"`).
 
+### Django Outbox (`outbox_django/`)
+
+Django-native equivalent of the SQLAlchemy outbox module. Requires `django>=4.2` (install via `pip install unimessaging[django]`).
+
+- **models.py** -- `OutboxRecord` Django model with the same schema as `OutboxMixin`. Uses `app_label = "unimessaging"` so services add `"unimessaging.outbox_django"` to `INSTALLED_APPS`.
+- **repository.py** -- `DjangoOutboxRepository` writes outbox rows using Django ORM within `transaction.atomic()`.
+- **event_bus.py** -- `DjangoOutboxEventBus` is a sync event bus that reuses the serialization helpers from `outbox/event_bus.py`. No code duplication.
+- **relay.py** -- `DjangoOutboxRelay` uses raw SQL with `FOR UPDATE SKIP LOCKED` for DB polling and bridges to async NATS publishing.
+
 ### Integrations (`integrations/`)
 
 Wiring layer that assembles use cases with adapters and exposes a simple public API.
 
 - **common/facade.py** -- The `send_message()` function that consumers call. Handles dependency construction and caching.
-- **fastapi/startup.py** -- `start_messaging()` and `stop_messaging()` for FastAPI lifespan integration.
+- **fastapi/startup.py** -- `start_messaging()` and `stop_messaging()` for FastAPI lifespan integration. Stores the broker on `app.state`.
+- **django/startup.py** -- `start_messaging()`, `stop_messaging()`, `get_messaging()`, and `get_broker()` for Django. Uses module-level state instead of `app.state` since Django has no equivalent.
+- **django/management/commands/outbox_relay.py** -- `manage.py outbox_relay` management command that runs the outbox relay as a long-lived process with signal handling for graceful shutdown.
 
 ## Dependency Flow
 
