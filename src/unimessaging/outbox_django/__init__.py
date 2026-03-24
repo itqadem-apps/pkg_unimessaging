@@ -8,10 +8,17 @@ Provides Django-native equivalents of the SQLAlchemy outbox infrastructure:
 - ``DjangoOutboxRelay`` — polls and publishes to messaging (sync DB + async publish)
 """
 
-from .models import OutboxRecord, OutboxStatus
-from .repository import DjangoOutboxRepository
-from .event_bus import DjangoOutboxEventBus
-from .relay import DjangoOutboxRelay
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+default_app_config = "unimessaging.outbox_django.apps.OutboxDjangoConfig"
+
+if TYPE_CHECKING:
+    from .event_bus import DjangoOutboxEventBus
+    from .models import OutboxRecord, OutboxStatus
+    from .relay import DjangoOutboxRelay
+    from .repository import DjangoOutboxRepository
 
 __all__ = [
     "OutboxRecord",
@@ -20,3 +27,23 @@ __all__ = [
     "DjangoOutboxEventBus",
     "DjangoOutboxRelay",
 ]
+
+
+def __getattr__(name: str):
+    if name in ("OutboxRecord", "OutboxStatus"):
+        from .models import OutboxRecord, OutboxStatus
+
+        return OutboxRecord if name == "OutboxRecord" else OutboxStatus
+    if name == "DjangoOutboxRepository":
+        from .repository import DjangoOutboxRepository
+
+        return DjangoOutboxRepository
+    if name == "DjangoOutboxEventBus":
+        from .event_bus import DjangoOutboxEventBus
+
+        return DjangoOutboxEventBus
+    if name == "DjangoOutboxRelay":
+        from .relay import DjangoOutboxRelay
+
+        return DjangoOutboxRelay
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
