@@ -2,7 +2,7 @@
 
 from .broker import UnifiedMessageBroker
 from .client import UnifiedMessaging
-from .config import MessagingConfig
+from .config import JetStreamConsumer, MessagingConfig
 from .registry import (
     HandlerRegistry,
     register_handler,
@@ -18,6 +18,7 @@ from .utils import (
 
 __all__ = [
     "HandlerRegistry",
+    "JetStreamConsumer",
     "MessagingConfig",
     "UnifiedMessageBroker",
     "UnifiedMessaging",
